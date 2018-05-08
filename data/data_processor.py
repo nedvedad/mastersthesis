@@ -327,17 +327,17 @@ if __name__ == "__main__":
     with contextlib.ExitStack() as stack:
         dp = DataProcessor()
 
-        # dp.previous_tick(
-        #     file_paths=[
-        #         "tickTU.csv",
-        #         "tickFV.csv",
-        #         "tickUS.csv",
-        #         "tickTY.csv"
-        #     ],
-        #     skip_headers=True,
-        #     delta=300,
-        #     regime=("07:20", "14:00")
-        # )
+        dp.previous_tick(
+            file_paths=[
+                "tickTU.csv",
+                "tickFV.csv",
+                "tickUS.csv",
+                "tickTY.csv"
+            ],
+            skip_headers=True,
+            delta=300,
+            regime=("07:20", "14:00")
+        )
 
         dp.nelson_siegel(
             series=[
