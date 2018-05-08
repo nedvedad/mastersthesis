@@ -1,0 +1,103 @@
+---
+title: "Term Structure in High Frequency"
+output: 
+    html_document:
+        toc: TRUE
+        toc_float: TRUE
+        number_sections: FALSE
+        df_print: kable
+        css: style.css
+        code_folding: hide
+---
+
+```{r knitr_setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning=FALSE,
+  message=FALSE,
+  fig.width=8,
+  fig.height=10
+)
+```
+
+
+```{r script_setup}
+library(data.table)
+library(ggplot2)
+library(magrittr)
+library(extrafont)
+library(scales)
+library(fBasics)
+library(tseries)
+library(plot3D)
+library(reshape2)
+library(gridExtra)
+
+source('setup.R')
+```
+
+# 02 - Spectral Analysis
+
+## Yields of Interest Rate Futures
+
+```{r, fig.height=6}
+for(i in cYieldLobs[-1]){
+  series <- termSt[, i, with=FALSE]
+  seriesName <- colnames(series)
+  plotData <- getSpectrumPlotData(series, title=seriesName)
+  print(plotSpectrum(plotData))
+}
+```
+
+## First Differences of Beta Coefficients
+
+```{r, fig.height=6}
+for(i in cBetaDiff[-1]){
+  series <- termSt[, i, with=FALSE]
+  seriesName <- colnames(series)
+  plotData <- getSpectrumPlotData(series, title=seriesName)
+  print(plotSpectrum(plotData))
+}
+```
+
+## Realised Variances of Yields of Interest Rate Futures
+
+```{r, fig.height=6}
+for(i in cYieldRV[-1]){
+  series <- termSt[, i, with=FALSE]
+  seriesName <- names(series)
+  plotData <- getSpectrumPlotData(series, title=seriesName)
+  print(plotSpectrum(plotData))
+}
+```
+
+## Realised Variances of Beta Estimates of the DNSM
+
+```{r, fig.height=6}
+for(i in cBetaRV[-1]){
+  series <- termSt[, i, with=FALSE]
+  seriesName <- names(series)
+  plotData <- getSpectrumPlotData(series, title=seriesName)
+  print(plotSpectrum(plotData))
+}
+```
+
+## Beta Coefficients of DNSM
+
+```{r, fig.height=6}
+series <- termSt[, 'ns_beta1_lobs', with=FALSE]
+plotData <- getSWSpectrumPlotData(series, names(series))
+plotSWSpectrum(plotData, 'spectogram')
+```
+
+```{r, fig.height=6}
+plotSWSpectrum(plotData, 'samples-quants')
+```
+
+```{r}
+plotSWSpectrum(plotData, 'samples-spectra')
+```
+
+```{r, fig.height=4}
+plotSWSpectrum(plotData, 'pvals')
+```
+

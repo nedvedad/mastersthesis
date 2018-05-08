@@ -1,0 +1,117 @@
+---
+title: "Term Structure in High Frequency"
+output: 
+    html_document:
+        toc: TRUE
+        toc_float: TRUE
+        number_sections: FALSE
+        df_print: kable
+        css: style.css
+        code_folding: hide
+---
+
+```{r knitr_setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning=FALSE,
+  message=FALSE,
+  fig.width=8,
+  fig.height=10
+)
+```
+
+
+```{r script_setup}
+library(data.table)
+library(ggplot2)
+library(magrittr)
+library(extrafont)
+library(scales)
+library(fBasics)
+library(tseries)
+library(plot3D)
+library(reshape2)
+library(gridExtra)
+
+source('setup.R')
+```
+
+# 03 - Cross-Spectral Analysis
+
+## Yields of Interest Rate Futures
+
+```{r, fig.height=4}
+cSeriesComb <- t(combn(cYieldLobs[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+## First Differences of Beta Coefficients
+
+```{r, fig.height=4}
+cSeriesComb <- t(combn(cBetaDiff[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+## Realised Variances of Yields of Interest Rate Futures
+
+```{r, fig.height=4}
+cSeriesComb <- t(combn(cYieldRV[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+## Realised Variances of Beta Estimates of the DNSM
+
+```{r, fig.height=4}
+cSeriesComb <- t(combn(cBetaRV[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+## RV of Beta Estimates and RV of a Yield of Interest Rate Future
+```{r, fig.height=4}
+cSeriesComb <- as.matrix(expand.grid(cYieldRV[3], cBetaRV[-1]))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+## FD of Beta Estimate and RV of Beta Estimates
+```{r, fig.height=4}
+cSeriesComb <- as.matrix(expand.grid(cBetaDiff[3], cBetaRV[-1]))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+## Yield and RV of Yield
+```{r, fig.height=4}
+cSeriesComb <- c(cYieldLobs[3], cYieldRV[3])
+series <- termSt[, cSeriesComb, with=FALSE]
+seriesNames <- colnames(series)
+plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+plotCrossSpectrum(plotData)
+```

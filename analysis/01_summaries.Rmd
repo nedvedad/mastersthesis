@@ -1,0 +1,316 @@
+---
+title: "Term Structure in High Frequency"
+output: 
+    html_document:
+        toc: TRUE
+        toc_float: TRUE
+        number_sections: FALSE
+        df_print: kable
+        css: style.css
+        code_folding: hide
+---
+
+```{r knitr_setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning=FALSE,
+  message=FALSE,
+  fig.width=8,
+  fig.height=10
+)
+```
+
+
+```{r script_setup}
+library(data.table)
+library(ggplot2)
+library(magrittr)
+library(extrafont)
+library(scales)
+library(fBasics)
+library(tseries)
+library(plot3D)
+library(reshape2)
+library(gridExtra)
+
+source('setup.R')
+```
+
+# 01 - Summaries
+
+## Number of Daily Observations
+
+```{r}
+termSt[, cNObsSum, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Number of Daily Observations',
+      subtitle='of Interest Rate Futures Prices',
+      x='date',
+      y='number of observations'
+    ) +
+    thesisPlotTheme
+```
+
+## Closing Prices of Interest Rate Futures
+```{r}
+termSt[, cCloseLobs, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Closing Prices',
+      subtitle='of interest rate futures',
+      x='date',
+      y='closing price'
+    ) +
+    thesisPlotTheme
+```
+
+### Summary Statistics
+
+```{r rows.print=100, rownames.print=TRUE}
+termSt[, cCloseLobs[-1], with=FALSE] %>%
+  basicStats() %>%
+  subset(rownames(.) %in% thesisRequiredSats)
+```
+
+
+## Yields of Interest Rate Futures
+```{r}
+termSt[, cYieldLobs, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Yields',
+      subtitle='of interest rate futures',
+      x='date',
+      y='yield'
+    ) +
+    thesisPlotTheme
+```
+
+### Summary Statistics
+
+```{r rows.print=100, rownames.print=TRUE}
+termSt[, cYieldLobs[-1], with=FALSE] %>%
+  basicStats() %>%
+  subset(rownames(.) %in% thesisRequiredSats)
+```
+
+### Neslon-Siegel Model Fit
+
+```{r, fig.height=6}
+rowSubset <- seq.int(1L, nrow(termSt), by=25L)
+plotData <- data.frame()
+for(i in 1:length(rowSubset)){
+  obs <- termSt[rowSubset[i], cBetaLobs, with=FALSE]
+  ts <- obs[[1]]
+  betas <- unlist(obs[, 2:4])
+  plotData <- rbind(plotData, fitYields(betas, ts))
+}
+acast(plotData, date ~ maturity, value.var='yield') %>%
+  persp3D(z=., y=as.numeric(colnames(.)), x=seq(from=0, to=90, along.with=rownames(.)),
+          main='Fitted Yield Curves', xlab='time', ylab='maturity', zlab='yield',
+          ticktype='simple', theta=35, phi=25, facets=FALSE, col='black', expand=550, d=25,
+          scale=FALSE, bty='u', lwd=0.25)
+```
+
+```{r}
+plotData <- data.table()
+
+set.seed(100)
+randomObs <- sample(1:nrow(termSt), size = 16)
+
+for(o in randomObs){
+  oDate <- termSt[o, timestamp]
+  
+  betas <- termSt[o, cBetaLobs[-1], with=FALSE]
+  fittedYields <- fitYields(betas, oDate)
+  
+  observedYields <- data.frame(
+    maturity=c(2, 5, 10, 25),
+    yield=as.vector(t(termSt[o, cYieldLobs[-1], with=FALSE])),
+    type='observed',
+    date=oDate
+  )
+  
+  plotData <- rbind(plotData, fittedYields, observedYields)
+}
+
+plotData %>%
+  ggplot(aes(x=maturity, y=yield)) +
+    geom_point(data=plotData[type=='observed', ], aes(shape=type), size=1) +
+    geom_line(data=plotData[type=='fitted', ], aes(lty=type), size=0.25) +
+    facet_wrap(~ date) +
+    labs(
+      title='Fitted vs. the Observed Yield Curve',
+      subtitle='using the Dynamic Nelson Siegel Model',
+      x='maturity',
+      y='yield'
+    ) +
+    thesisPlotTheme
+```
+
+```{r}
+termSt[, .(timestamp,
+           TU_yield_res = TU_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 2),
+           FV_yield_res = FV_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 5),
+           TY_yield_res = TY_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 10),
+           US_yield_res = US_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 25))] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Residuals',
+      subtitle='of yield estimates of the Dynamic Nelson Siegel Model',
+      x='date',
+      y='residual'
+    ) +
+    thesisPlotTheme
+```
+
+## Realised Variances of Yields of Interest Rate Futures
+```{r}
+termSt[, cYieldRV, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Realised Variance',
+      subtitle='of yields of interest rate futures',
+      x='date',
+      y='realised variance'
+    ) +
+    thesisPlotTheme
+```
+
+### Summary Statistics
+
+```{r rows.print=100, rownames.print=TRUE}
+termSt[, cYieldRV[-1], with=FALSE] %>%
+  basicStats() %>%
+  subset(rownames(.) %in% thesisRequiredSats)
+```
+
+## Beta Estimates of the Dynamic Nelson Siegel Model
+
+```{r}
+termSt[, cBetaLobs, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Coefficient Estimates',
+      subtitle='of the Dynamic Nelson Siegel Model',
+      x='date',
+      y='coefficient estimate'
+    ) +
+    thesisPlotTheme
+```
+
+### Summary Statistics
+
+```{r rows.print=100, rownames.print=TRUE}
+termSt[, cBetaLobs[-1], with=FALSE] %>%
+  basicStats() %>%
+  subset(rownames(.) %in% thesisRequiredSats)
+```
+
+### Augmented Dickey-Fuller Test
+
+```{r}
+res <- data.table()
+for(xCol in cBetaLobs[-1]){
+  termSt[[xCol]] %>%
+    adf.test() %>%
+    unlist() %>%
+    c(series=names(termSt)[xCol]) %>%
+    t() %>%
+    rbind(res) ->
+    res
+}
+res[, .(series,
+        adf_stat = `statistic.Dickey-Fuller`,
+        lag_order = `parameter.Lag order`,
+        p.value,
+        alt = alternative)]
+```
+
+## First Differences of Beta Estimates of the Dynamic Nelson Siegel Model
+
+```{r}
+termSt[, cBetaDiff, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='First Differences of Coefficient Estimates',
+      subtitle='of the Dynamic Nelson Siegel Model',
+      x='date',
+      y='first difference of coefficient estimate'
+    ) +
+    thesisPlotTheme
+```
+
+### Augmented Dickey-Fuller Test
+
+```{r}
+res <- data.table()
+for(xCol in cBetaDiff[-1]){
+  termSt[[xCol]] %>%
+    adf.test() %>%
+    unlist() %>%
+    c(series=names(termSt)[xCol]) %>%
+    t() %>%
+    rbind(res) ->
+    res
+}
+res[, .(series,
+        adf_stat = `statistic.Dickey-Fuller`,
+        lag_order = `parameter.Lag order`,
+        p.value,
+        alt = alternative)]
+```
+
+## Realised Variances of Beta Estimates of the DNSM
+
+```{r}
+termSt[, cBetaRV, with=FALSE] %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = timestamp, y = value)) +
+    geom_line(size=0.3) +
+    facet_grid(variable~.) +
+    scale_x_date(breaks=pretty_breaks(10)) +
+    labs(
+      title='Realised Variance',
+      subtitle='of coefficient estimates of the Dynamic Nelson Siegel Model',
+      x='date',
+      y='realised variance'
+    ) +
+    thesisPlotTheme
+```
+
+### Summary Statistics
+
+```{r rows.print=100, rownames.print=TRUE}
+termSt[, cBetaRV[-1], with=FALSE] %>%
+  basicStats() %>%
+  subset(rownames(.) %in% thesisRequiredSats)
+```

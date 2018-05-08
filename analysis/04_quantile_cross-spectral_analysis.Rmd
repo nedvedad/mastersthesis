@@ -1,0 +1,120 @@
+---
+title: "Term Structure in High Frequency"
+output:
+  html_document:
+    code_folding: hide
+    css: style.css
+    df_print: kable
+    number_sections: no
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r knitr_setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning=FALSE,
+  message=FALSE,
+  fig.width=8,
+  fig.height=10
+)
+```
+
+
+```{r script_setup}
+library(data.table)
+library(ggplot2)
+library(magrittr)
+library(extrafont)
+library(scales)
+library(fBasics)
+library(tseries)
+library(plot3D)
+library(reshape2)
+library(gridExtra)
+library(quantspec)
+
+source('setup.R')
+```
+
+# 04 - Quantile Cross-Spectral Analysis
+
+## Yields of Interest Rate Futures
+
+```{r, fig.height=6}
+cSeriesComb <- t(combn(cYieldLobs[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+}
+```
+
+## First Differences of Beta Coefficients
+
+```{r, fig.height=6}
+cSeriesComb <- t(combn(cBetaDiff[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+}
+```
+
+## Realised Variances of Yields of Interest Rate Futures
+
+```{r, fig.height=6}
+cSeriesComb <- t(combn(cYieldRV[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+}
+```
+
+## Realised Variances of Beta Estimates of the DNSM
+
+```{r, fig.height=6}
+cSeriesComb <- t(combn(cBetaRV[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+}
+```
+
+## RV of Beta Estimates and RV of a Yield of Interest Rate Future
+```{r, fig.height=6}
+cSeriesComb <- as.matrix(expand.grid(cYieldRV[3], cBetaRV[-1]))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+}
+```
+
+## FD of Beta Estimate and RV of Beta Estimates
+```{r, fig.height=6}
+cSeriesComb <- as.matrix(expand.grid(cBetaDiff[3], cBetaRV[-1]))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+}
+```
+
+## Yield and RV of Yield
+```{r, fig.height=6}
+cSeriesComb <- c(cYieldLobs[3], cYieldRV[3])
+series <- as.matrix(termSt[, cSeriesComb, with=FALSE])
+seriesNames <- colnames(series)
+plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+plotQuantileCoherency(plotData)
+```
