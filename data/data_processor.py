@@ -1,14 +1,16 @@
+import contextlib
+import datetime as dt
 import os
+import random
+import re
 import sys
 import time
-import contextlib
-import re
-import random
-import datetime as dt
 from itertools import product
-from scipy import stats
-import numpy as np
 from math import exp
+
+import numpy as np
+import pandas as pd
+from scipy import stats
 
 
 class DataProcessor:
@@ -322,6 +324,73 @@ class DataProcessor:
                     for i, idx in enumerate(idx_sums):
                         sums[i] += int(line[idx])
 
+    def subset_data(self, file_path, out_path):
+        """
+        Removes public holidays, weekends and incomplete observations
+        from the dataset.
+
+        Keyword arguments:
+        file_path: path to the original dataset
+        out_path: path where to save the subset of the original dataset
+        """
+
+        print("\n\n# Reading the Original Dataset #\n")
+        df = pd.read_csv(file_path, index_col="timestamp")
+
+        # remove US federal holidays from the dataset
+        print("# Removing Federal Holidays #\n")
+        holidays = pd.read_csv("usholidays.csv", usecols=["Date"],
+                               squeeze=True).values
+        df = df.loc[df.index.difference(holidays)]
+
+        # remove weekends from the dataset
+        print("# Removing Weekends #\n")
+
+        def is_weekday(x):
+            dow = int(dt.datetime.strptime(x, '%Y-%m-%d').strftime('%w'))
+            return dow not in {0, 6}
+
+        df = df.loc[df.index.map(is_weekday)]
+
+        print("# Saving the Result #\n")
+        df.to_csv(out_path)
+
+    def lambda_optim(self, file_path):
+        # maturities to test
+        t_maturities = [2, 5, 10, 25]
+
+        # get the lambda values to test
+        t_lambdas = pd.read_csv("testlambdas.csv", index_col=["maturity"])
+
+        # read the final dataset
+        df = pd.read_csv(file_path, index_col="timestamp")
+        df = df[["TU_yield_lobs", "FV_yield_lobs",
+                 "TY_yield_lobs", "US_yield_lobs"]]
+
+        # computes square error of a regression
+        def compute_sq_error(x, X_ns):
+            y_ns = x.values
+            coef_ns = np.linalg.lstsq(X_ns, y_ns, rcond=None)[0]
+            resid = y_ns - np.dot(X_ns, coef_ns)
+            ssr = np.sum(resid**2)
+            return ssr
+
+        with open("lambda_mse.csv", "w") as out_file:
+            out_file.write("maturity,lambda,mse\n")
+            # go through each maturity-lambda pair and compute RMSE
+            for m, lmbda in t_lambdas.itertuples():
+                # X matrix for the Nelson-Siegel factor regression
+                X_ns = np.array(
+                    [[1, (1 - exp(-lmbda * m)) / (lmbda * m), (1 - exp(-lmbda * m)) / (lmbda * m) - exp(-lmbda * m)]
+                     for m in t_maturities]
+                )
+                sq_errors = df.apply(func=compute_sq_error,
+                                     axis=1, args=(X_ns,))
+                mse = sq_errors.sum() / (df.shape[0] * 4)
+                out_file.write(str(m) + "," + str(lmbda) +
+                               "," + str(mse) + "\n")
+                print(f"maturity: {m}, lambda: {lmbda}, mse: {mse}")
+
 
 if __name__ == "__main__":
     with contextlib.ExitStack() as stack:
@@ -374,7 +443,8 @@ if __name__ == "__main__":
                     "contr_mult": 1000
                 }
             ],
-            lmbda=0.0609,
+            # lmbda=0.0609,  # used by Diebold and Li 
+            lmbda=0.6329,  # maximises curvature at 2.83 years which minimises mse of resulting fits
             out_path="nelson_siegel-merged.csv"
         )
 
@@ -390,5 +460,14 @@ if __name__ == "__main__":
             cols_sums=["TU_nobs", "FV_nobs", "TY_nobs", "US_nobs"],
             out_path="realised_volatility.csv"
         )
+
+        dp.subset_data(
+            file_path="realised_volatility.csv",
+            out_path="realised_volatility-subset.csv"
+        )
+
+        # dp.lambda_optim(
+        #     file_path="realised_volatility-subset.csv"
+        # )
 
         del dp

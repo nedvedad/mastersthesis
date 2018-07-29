@@ -31,6 +31,7 @@ library(tseries)
 library(plot3D)
 library(reshape2)
 library(gridExtra)
+library(xtable)
 
 source('setup.R')
 ```
@@ -43,24 +44,26 @@ source('setup.R')
 termSt[, cNObsSum, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
-      title='Number of Daily Observations',
+      title='Number of Intraday Observations',
       subtitle='of Interest Rate Futures Prices',
       x='date',
       y='number of observations'
     ) +
     thesisPlotTheme
+ggsaveFullPage("number_of_intraday_observations.png")
 ```
 
 ## Closing Prices of Interest Rate Futures
+
 ```{r}
 termSt[, cCloseLobs, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
@@ -70,14 +73,14 @@ termSt[, cCloseLobs, with=FALSE] %>%
       y='closing price'
     ) +
     thesisPlotTheme
+ggsaveFullPage("closing_prices.png")
 ```
 
 ### Summary Statistics
 
 ```{r rows.print=100, rownames.print=TRUE}
 termSt[, cCloseLobs[-1], with=FALSE] %>%
-  basicStats() %>%
-  subset(rownames(.) %in% thesisRequiredSats)
+  latexSummaryStats(filename="closing_prices.tex", caption="Summary statistics of daily closing prices", label="tab:closing_prices")
 ```
 
 
@@ -86,7 +89,7 @@ termSt[, cCloseLobs[-1], with=FALSE] %>%
 termSt[, cYieldLobs, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
@@ -96,14 +99,14 @@ termSt[, cYieldLobs, with=FALSE] %>%
       y='yield'
     ) +
     thesisPlotTheme
+ggsaveFullPage("yields.png")
 ```
 
 ### Summary Statistics
 
 ```{r rows.print=100, rownames.print=TRUE}
 termSt[, cYieldLobs[-1], with=FALSE] %>%
-  basicStats() %>%
-  subset(rownames(.) %in% thesisRequiredSats)
+  latexSummaryStats(filename="yields.tex", caption="Summary statistics of yields", label="tab:yields", digits=6)
 ```
 
 ### Neslon-Siegel Model Fit
@@ -124,10 +127,12 @@ acast(plotData, date ~ maturity, value.var='yield') %>%
           scale=FALSE, bty='u', lwd=0.25)
 ```
 
+#### Nelson-Siegel Cuts
+
 ```{r}
 plotData <- data.table()
 
-set.seed(100)
+set.seed(12345)
 randomObs <- sample(1:nrow(termSt), size = 16)
 
 for(o in randomObs){
@@ -158,34 +163,119 @@ plotData %>%
       y='yield'
     ) +
     thesisPlotTheme
+ggsaveFullPage("n_s_cuts.png")
 ```
+
+#### Mean/Median Curve
+
+```{r}
+# takes long to compute
+
+# plotData <- data.table()
+# 
+# for(o in 1:nrow(termSt)){
+#   oDate <- termSt[o, timestamp]
+#   betas <- termSt[o, cBetaLobs[-1], with=FALSE]
+#   fittedYields <- fitYields(betas, oDate)
+#   plotData <- rbind(plotData, fittedYields)
+# }
+# 
+# plotData[, .(Mean = mean(yield),
+#              Median = median(yield)), by="maturity"] %>%
+#   melt(id.vars=1, measure_vars=2:3) -> plotDataSummary
+# 
+# plotData %>%
+#   ggplot(aes(x=maturity, y=yield, group=date)) +
+#     geom_line(size=0.25, alpha=0.006) +
+#     geom_line(data=plotDataSummary, aes(lty=variable, x=maturity, y=value, group=NULL)) +
+#     labs(
+#       title='Mean and Median Estimated Yield Curve',
+#       subtitle='using the Dynamic Nelson Siegel Model',
+#       x='maturity',
+#       y='yield'
+#     ) +
+#     thesisPlotTheme
+# ggsaveHalfPage("median_yields.png")
+```
+
+#### Residual plot
 
 ```{r}
 termSt[, .(timestamp,
-           TU_yield_res = TU_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 2),
-           FV_yield_res = FV_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 5),
-           TY_yield_res = TY_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 10),
-           US_yield_res = US_yield_lobs - fitYield(ns_beta0_lobs, ns_beta1_lobs, ns_beta2_lobs, 25))] %>%
+           `2Y resid` = `2Y Yield` - fitYield(`Beta0 (level)`, `Beta1 (slope)`, `Beta2 (curvature)`, 2),
+           `5Y resid` = `5Y Yield` - fitYield(`Beta0 (level)`, `Beta1 (slope)`, `Beta2 (curvature)`, 5),
+           `10Y resid` = `10Y Yield` - fitYield(`Beta0 (level)`, `Beta1 (slope)`, `Beta2 (curvature)`, 10),
+           `25Y resid` = `25Y Yield` - fitYield(`Beta0 (level)`, `Beta1 (slope)`, `Beta2 (curvature)`, 25))] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
       title='Residuals',
-      subtitle='of yield estimates of the Dynamic Nelson Siegel Model',
+      subtitle='of yield estimates of the Dynamic Nelson-Siegel Model',
       x='date',
       y='residual'
     ) +
     thesisPlotTheme
+ggsaveFullPage("n_s_residuals.png")
 ```
+
+#### Factor Loadings
+
+```{r}
+plotData <- data.table(t(sapply(seq(0.01, 30, by=0.5), FUN = factorLoadings)))
+names(plotData) <- c("maturity", "Beta0 (level)", "Beta1 (slope)", "Beta2 (curvature)")
+plotData %>%
+  melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
+  ggplot(aes(x = maturity, y = value, lty = variable)) +
+    geom_line(size=0.3) +
+    labs(
+      title='Factor Loadings',
+      subtitle='of Dynamic Nelson-Siegel Model',
+      caption=paste0('Lambda = 0.6329'),
+      x='maturity',
+      y='factor loading'
+    ) +
+    thesisPlotTheme
+ggsaveHalfPage("n_s_loadings.png")
+```
+
+#### ACF of yields
+
+```{r}
+res <- numeric()
+for(xCol in cYieldLobs[-1]){
+    acf(termSt[[xCol]], plot=FALSE)$acf[,,1] %>%
+    c(res) ->
+    res
+}
+data.table(
+  series=rep(names(termSt)[cYieldLobs[-1]], each=length(res)/4),
+  acf=res,
+  lag=rep(seq(0, length(res)/4-1), 4)
+) %>%
+  ggplot(aes(x = lag, y = acf, xend = lag, yend = 0)) +
+    geom_point(size=0.7) +
+    geom_segment(size=0.1) +
+    facet_grid(series~.) +
+    labs(
+      title='Autocorrelation Function',
+      subtitle='of Dynamic Nelson Siegel Model factors',
+      x='lag',
+      y='autocorrelation'
+    ) +
+    thesisPlotTheme
+ggsaveFullPage("acf_dnsm_coefs.png")
+```
+
 
 ## Realised Variances of Yields of Interest Rate Futures
 ```{r}
 termSt[, cYieldRV, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
@@ -195,14 +285,7 @@ termSt[, cYieldRV, with=FALSE] %>%
       y='realised variance'
     ) +
     thesisPlotTheme
-```
-
-### Summary Statistics
-
-```{r rows.print=100, rownames.print=TRUE}
-termSt[, cYieldRV[-1], with=FALSE] %>%
-  basicStats() %>%
-  subset(rownames(.) %in% thesisRequiredSats)
+ggsaveFullPage("yields_rv.png")
 ```
 
 ## Beta Estimates of the Dynamic Nelson Siegel Model
@@ -211,7 +294,7 @@ termSt[, cYieldRV[-1], with=FALSE] %>%
 termSt[, cBetaLobs, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
@@ -221,6 +304,7 @@ termSt[, cBetaLobs, with=FALSE] %>%
       y='coefficient estimate'
     ) +
     thesisPlotTheme
+ggsaveFullPage("dnsm_coefs.png")
 ```
 
 ### Summary Statistics
@@ -231,7 +315,7 @@ termSt[, cBetaLobs[-1], with=FALSE] %>%
   subset(rownames(.) %in% thesisRequiredSats)
 ```
 
-### Augmented Dickey-Fuller Test
+### Augmented Dickey-Fuller Test Betas
 
 ```{r}
 res <- data.table()
@@ -244,12 +328,61 @@ for(xCol in cBetaLobs[-1]){
     rbind(res) ->
     res
 }
-res[, .(series,
-        adf_stat = `statistic.Dickey-Fuller`,
-        lag_order = `parameter.Lag order`,
-        p.value,
-        alt = alternative)]
+res[, .(`Series` = series,
+        `ADF Stat` = round(as.numeric(`statistic.Dickey-Fuller`), 2),
+        `P-Value` = round(as.numeric(p.value), 2))] %>%
+  xtable(caption="Augmented Dickey-Fuller Test of Dynamic Nelson-Siegel Model factors (alternative: stationary)", label="tab:adf_n_s_factors") %>%
+    print(file="tables/adf_n_s_factors.tex")
 ```
+
+### Augmented Dickey-Fuller Test Yields
+
+```{r}
+res <- data.table()
+for(xCol in cYieldLobs[-1]){
+  termSt[[xCol]] %>%
+    adf.test() %>%
+    unlist() %>%
+    c(series=names(termSt)[xCol]) %>%
+    t() %>%
+    rbind(res) ->
+    res
+}
+res[, .(`Series` = series,
+        `ADF Stat` = round(as.numeric(`statistic.Dickey-Fuller`), 2),
+        `P-Value` = round(as.numeric(p.value), 2))] %>%
+  xtable(caption="Augmented Dickey-Fuller Test of yields (alternative: stationary)", label="tab:adf_yields") %>%
+    print(file="tables/adf_yields.tex")
+```
+
+### ACF of factors
+
+```{r}
+res <- numeric()
+for(xCol in cBetaLobs[-1]){
+    acf(termSt[[xCol]], plot=FALSE)$acf[,,1] %>%
+    c(res) ->
+    res
+}
+data.table(
+  series=rep(names(termSt)[cBetaLobs[-1]], each=length(res)/3),
+  acf=res,
+  lag=rep(seq(0, length(res)/3-1), 3)
+) %>%
+  ggplot(aes(x = lag, y = acf, xend = lag, yend = 0)) +
+    geom_point(size=0.7) +
+    geom_segment(size=0.1) +
+    facet_grid(series~.) +
+    labs(
+      title='Autocorrelation Function',
+      subtitle='of Dynamic Nelson Siegel Model factors',
+      x='lag',
+      y='autocorrelation'
+    ) +
+    thesisPlotTheme
+ggsaveFullPage("acf_dnsm_coefs.png")
+```
+
 
 ## First Differences of Beta Estimates of the Dynamic Nelson Siegel Model
 
@@ -257,7 +390,7 @@ res[, .(series,
 termSt[, cBetaDiff, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
@@ -295,7 +428,7 @@ res[, .(series,
 termSt[, cBetaRV, with=FALSE] %>%
   melt(id.vars=1, measure.vars = 2:ncol(.)) %>%
   ggplot(aes(x = timestamp, y = value)) +
-    geom_line(size=0.3) +
+    geom_line(size=0.1) +
     facet_grid(variable~.) +
     scale_x_date(breaks=pretty_breaks(10)) +
     labs(
@@ -305,6 +438,7 @@ termSt[, cBetaRV, with=FALSE] %>%
       y='realised variance'
     ) +
     thesisPlotTheme
+ggsaveFullPage("dnsm_coefs_rv.png")
 ```
 
 ### Summary Statistics

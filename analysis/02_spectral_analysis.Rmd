@@ -45,17 +45,25 @@ for(i in cYieldLobs[-1]){
   seriesName <- colnames(series)
   plotData <- getSpectrumPlotData(series, title=seriesName)
   print(plotSpectrum(plotData))
+  # file naming
+  m <- regexpr("^(\\d+)Y", names(termSt)[i])
+  n <- tolower(regmatches(names(termSt)[i], m))
+  ggsaveHalfPage(paste0("spec_yield_", n, ".png"))
 }
 ```
 
-## First Differences of Beta Coefficients
+## First Differences of Yields
 
 ```{r, fig.height=6}
-for(i in cBetaDiff[-1]){
+for(i in cYieldDiff[-1]){
   series <- termSt[, i, with=FALSE]
   seriesName <- colnames(series)
   plotData <- getSpectrumPlotData(series, title=seriesName)
   print(plotSpectrum(plotData))
+  # file naming
+  m <- regexpr("^(\\d+)Y", names(termSt)[i])
+  n <- tolower(regmatches(names(termSt)[i], m))
+  ggsaveHalfPage(paste0("spec_diff_yield_", n, ".png"))
 }
 ```
 
@@ -67,6 +75,10 @@ for(i in cYieldRV[-1]){
   seriesName <- names(series)
   plotData <- getSpectrumPlotData(series, title=seriesName)
   print(plotSpectrum(plotData))
+  # file naming
+  m <- regexpr("^(\\d+)Y", seriesName)
+  n <- tolower(regmatches(seriesName, m))
+  ggsaveHalfPage(paste0("spec_yield_rv_", n, ".png"))
 }
 ```
 
@@ -78,26 +90,53 @@ for(i in cBetaRV[-1]){
   seriesName <- names(series)
   plotData <- getSpectrumPlotData(series, title=seriesName)
   print(plotSpectrum(plotData))
+  m <- regexpr("^(Beta\\d+)", names(series))
+  n <- tolower(regmatches(names(series), m))
+  ggsaveHalfPage(paste0("spec_", n, "_rv.png"))
 }
 ```
 
-## Beta Coefficients of DNSM
+## First Differences of Beta Coefficients
 
 ```{r, fig.height=6}
-series <- termSt[, 'ns_beta1_lobs', with=FALSE]
-plotData <- getSWSpectrumPlotData(series, names(series))
-plotSWSpectrum(plotData, 'spectogram')
+for(i in cBetaDiff[-1]){
+  series <- termSt[, i, with=FALSE]
+  seriesName <- colnames(series)
+  plotData <- getSpectrumPlotData(series, title=seriesName)
+  print(plotSpectrum(plotData))
+  m <- regexpr("^(Beta\\d+)", names(series))
+  n <- tolower(regmatches(names(series), m))
+  ggsaveHalfPage(paste0("spec_", n, "_diff.png"))
+}
 ```
+
+## Yields - Moving Windows
 
 ```{r, fig.height=6}
-plotSWSpectrum(plotData, 'samples-quants')
+for(i in cYieldLobs[-1]){
+  series <- termSt[, i, with=FALSE]
+  plotData <- getSWSpectrumPlotData(series, names(series), win.length=125)
+  print(plotSWSpectrum(plotData, 'spectogram', dates=termSt[, timestamp]))
+  m <- regexpr("^(\\d+)Y", names(series))
+  n <- tolower(regmatches(names(series), m))
+  ggsaveHalfPage(paste0("spectogram_yield_", n, ".png"))
+  print(plotSWSpectrum(plotData, 'samples-quants'))
+  # plotSWSpectrum(plotData, 'samples-spectra')
+  # plotSWSpectrum(plotData, 'pvals')
+}
 ```
 
-```{r}
-plotSWSpectrum(plotData, 'samples-spectra')
-```
+## Beta Coefficients of DNSM - Moving Windows
 
-```{r, fig.height=4}
-plotSWSpectrum(plotData, 'pvals')
+```{r, fig.height=6}
+for(i in cBetaLobs[-1]){
+  series <- termSt[, i, with=FALSE]
+  plotData <- getSWSpectrumPlotData(series, names(series), win.length=125)
+  print(plotSWSpectrum(plotData, 'spectogram', dates=termSt[, timestamp]))
+  m <- regexpr("^(\\d+)Y", names(series))
+  n <- tolower(regmatches(names(series), m))
+  # print(plotSWSpectrum(plotData, 'samples-quants'))
+  # plotSWSpectrum(plotData, 'samples-spectra')
+  # plotSWSpectrum(plotData, 'pvals')
+}
 ```
-

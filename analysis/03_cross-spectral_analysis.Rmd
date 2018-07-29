@@ -31,6 +31,8 @@ library(tseries)
 library(plot3D)
 library(reshape2)
 library(gridExtra)
+library(grid)
+library(xtable)
 
 source('setup.R')
 ```
@@ -49,7 +51,46 @@ for(i in 1:nrow(cSeriesComb)){
 }
 ```
 
-## First Differences of Beta Coefficients
+```{r, fig.height=4}
+cSeriesComb <- t(combn(cYieldLobs[-1], m=2))
+res <- matrix(nrow=length(cYieldLobs[-1]), ncol=length(cYieldLobs[-1]))
+colnames(res) <- names(termSt)[cYieldLobs[-1]]
+rownames(res) <- names(termSt)[cYieldLobs[-1]]
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  avgCoh <- mean(getCrossSpectrumPlotData(series, title=seriesNames)$data$coh)
+  res[seriesNames[1], seriesNames[2]] <- avgCoh
+}
+res
+```
+
+## FD of Yields of Interest Rate Futures
+
+```{r, fig.height=4}
+cSeriesComb <- t(combn(cYieldDiff[-1], m=2))
+for(i in 1:nrow(cSeriesComb)){
+  series <- termSt[, cSeriesComb[i, ], with=FALSE]
+  seriesNames <- colnames(series)
+  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
+  plotCrossSpectrum(plotData)
+}
+```
+
+```{r, fig.height=4}
+  avgCoherencyTable(cYieldDiff[-1], filename="avg_coh_yield_diff.tex", caption="Average coherency of first-differences of yields by frequency range", label="tab:avg_coh_yield_diff")
+```
+
+```{r}
+seriesX <- termSt[, cYieldDiff[-1], with=FALSE]
+seriesY <- termSt[, cYieldDiff[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="...")
+# ggsaveFullPage("squared_coh_yields_rv.png")
+# plotMultipleCrossSpectrum(plotData, type="phase", subtitle="...")
+```
+
+## FD of Beta Coefficients
 
 ```{r, fig.height=4}
 cSeriesComb <- t(combn(cBetaDiff[-1], m=2))
@@ -61,7 +102,16 @@ for(i in 1:nrow(cSeriesComb)){
 }
 ```
 
-## Realised Variances of Yields of Interest Rate Futures
+```{r}
+seriesX <- termSt[, cBetaDiff[-1], with=FALSE]
+seriesY <- termSt[, cBetaDiff[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="between first-differenced coefficients of Dynamic Nelson-Siegel Model")
+ggsaveFullPage("squared_coh_dnsm_diff.png", landscape=TRUE)
+# plotMultipleCrossSpectrum(plotData, type="phase", subtitle="...")
+```
+
+## RV of Yields of Interest Rate Futures
 
 ```{r, fig.height=4}
 cSeriesComb <- t(combn(cYieldRV[-1], m=2))
@@ -73,7 +123,16 @@ for(i in 1:nrow(cSeriesComb)){
 }
 ```
 
-## Realised Variances of Beta Estimates of the DNSM
+```{r}
+seriesX <- termSt[, cYieldRV[-1], with=FALSE]
+seriesY <- termSt[, cYieldRV[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="between realised variances of yields of interest rate futures")
+ggsaveFullPage("squared_coh_yields_rv.png", landscape=TRUE)
+#plotMultipleCrossSpectrum(plotData, type="phase", subtitle="...")
+```
+
+## RV of Beta Estimates of the DNSM
 
 ```{r, fig.height=4}
 cSeriesComb <- t(combn(cBetaRV[-1], m=2))
@@ -83,6 +142,15 @@ for(i in 1:nrow(cSeriesComb)){
   plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
   plotCrossSpectrum(plotData)
 }
+```
+
+```{r}
+seriesX <- termSt[, cBetaRV[-1], with=FALSE]
+seriesY <- termSt[, cBetaRV[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="between realised variances of yields of interest rate futures")
+ggsaveFullPage("squared_coh_dnsm_coefs_rv.png", landscape=TRUE)
+plotMultipleCrossSpectrum(plotData, type="phase", subtitle="...")
 ```
 
 ## RV of Beta Estimates and RV of a Yield of Interest Rate Future
@@ -96,22 +164,31 @@ for(i in 1:nrow(cSeriesComb)){
 }
 ```
 
-## FD of Beta Estimate and RV of Beta Estimates
+## FD of Beta Estimates and FD of a Yield of Interest Rate Future
 ```{r, fig.height=4}
-cSeriesComb <- as.matrix(expand.grid(cBetaDiff[3], cBetaRV[-1]))
-for(i in 1:nrow(cSeriesComb)){
-  series <- termSt[, cSeriesComb[i, ], with=FALSE]
-  seriesNames <- colnames(series)
-  plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
-  plotCrossSpectrum(plotData)
-}
+seriesX <- termSt[, cYieldDiff[-1], with=FALSE]
+seriesY <- termSt[, cBetaDiff[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="between first-differenced coefficients of DNSM\nand first-differenced yields of interest rate futures")
+ggsaveFullPage("squared_coh_dnsm_diff_yields_diff.png", landscape = TRUE)
 ```
 
-## Yield and RV of Yield
+## FD of Beta Estimates and RV of Beta Estimates
 ```{r, fig.height=4}
-cSeriesComb <- c(cYieldLobs[3], cYieldRV[3])
-series <- termSt[, cSeriesComb, with=FALSE]
-seriesNames <- colnames(series)
-plotData <- getCrossSpectrumPlotData(series, title=seriesNames)
-plotCrossSpectrum(plotData)
+seriesX <- termSt[, cBetaDiff[-1], with=FALSE]
+seriesY <- termSt[, cBetaRV[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="...")
+plotMultipleCrossSpectrum(plotData, type="phase", subtitle="...")
+# ggsaveFullPage("squared_coh_dnsm_diff_yields_diff.png")
+```
+
+## FD of Yields and RV of Yilds
+```{r, fig.height=4}
+seriesX <- termSt[, cYieldDiff[-1], with=FALSE]
+seriesY <- termSt[, cYieldRV[-1], with=FALSE]
+plotData <- getMultipleCrossSpectrumPlotData(seriesX, seriesY)
+plotMultipleCrossSpectrum(plotData, type="coh", subtitle="...")
+plotMultipleCrossSpectrum(plotData, type="phase", subtitle="...")
+# ggsaveFullPage("squared_coh_dnsm_diff_yields_diff.png")
 ```

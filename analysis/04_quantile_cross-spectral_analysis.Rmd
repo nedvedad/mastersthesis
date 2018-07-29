@@ -40,19 +40,33 @@ source('setup.R')
 
 # 04 - Quantile Cross-Spectral Analysis
 
-## Yields of Interest Rate Futures
+<!-- ## Yields of Interest Rate Futures -->
+
+<!-- ```{r, fig.height=6} -->
+<!-- cSeriesComb <- t(combn(cYieldLobs[-1], m=2)) -->
+<!-- for(i in 1:nrow(cSeriesComb)){ -->
+<!--   series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE]) -->
+<!--   seriesNames <- colnames(series) -->
+<!--   plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames)) -->
+<!--   plotQuantileCoherency(plotData) -->
+<!-- } -->
+<!-- ``` -->
+
+## FD of Yields
 
 ```{r, fig.height=6}
-cSeriesComb <- t(combn(cYieldLobs[-1], m=2))
-for(i in 1:nrow(cSeriesComb)){
-  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
-  seriesNames <- colnames(series)
-  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
-  plotQuantileCoherency(plotData)
+allSeries <- cYieldDiff[-1]
+for(i in 1:length(allSeries)){
+  series <- as.matrix(termSt[, c(allSeries[i], allSeries[-i]), with=FALSE])
+  plotData <- suppressWarnings(getMultipleQuantileCoherencyPlotData(series, titles=colnames(series)))
+  plotMultipleQuantileCoherency(plotData)
+  m <- regexpr("^(\\d+)Y", colnames(series)[1])
+  n <- tolower(regmatches(colnames(series)[1], m))
+  ggsaveFullPage(paste0("qcsc_mult_yield_diff_", n, ".png"), landscape=TRUE)
 }
 ```
 
-## First Differences of Beta Coefficients
+## FD of Betas
 
 ```{r, fig.height=6}
 cSeriesComb <- t(combn(cBetaDiff[-1], m=2))
@@ -61,10 +75,25 @@ for(i in 1:nrow(cSeriesComb)){
   seriesNames <- colnames(series)
   plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
   plotQuantileCoherency(plotData)
+  m <- regexpr("^(Beta\\d+)", seriesNames)
+  n <- tolower(regmatches(seriesNames, m))
+  ggsaveFullPage(paste0("qcsc_beta_diff_", paste0(n, collapse="_"), ".png"), landscape = TRUE)
 }
 ```
 
-## Realised Variances of Yields of Interest Rate Futures
+```{r, fig.height=6}
+allSeries <- cBetaDiff[-1]
+for(i in 1:length(allSeries)){
+  series <- as.matrix(termSt[, c(allSeries[i], allSeries[-i]), with=FALSE])
+  plotData <- suppressWarnings(getMultipleQuantileCoherencyPlotData(series, titles=colnames(series)))
+  plotMultipleQuantileCoherency(plotData)
+  m <- regexpr("^(Beta\\d+)", colnames(series)[1])
+  n <- tolower(regmatches(colnames(series)[1], m))
+  ggsaveFullPage(paste0("qcsc_mult_beta_diff_", n, ".png"), landscape=TRUE)
+}
+```
+
+## RV of Yields
 
 ```{r, fig.height=6}
 cSeriesComb <- t(combn(cYieldRV[-1], m=2))
@@ -73,10 +102,25 @@ for(i in 1:nrow(cSeriesComb)){
   seriesNames <- colnames(series)
   plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
   plotQuantileCoherency(plotData)
+  m <- regexpr("^(\\d+)Y", seriesNames)
+  n <- tolower(regmatches(seriesNames, m))
+  ggsaveFullPage(paste0("qcsc_yield_rv_", paste0(n, collapse="_"), ".png"), landscape=TRUE)
 }
 ```
 
-## Realised Variances of Beta Estimates of the DNSM
+```{r, fig.height=6}
+allSeries <- cYieldRV[-1]
+for(i in 1:length(allSeries)){
+  series <- as.matrix(termSt[, c(allSeries[i], allSeries[-i]), with=FALSE])
+  plotData <- suppressWarnings(getMultipleQuantileCoherencyPlotData(series, titles=colnames(series)))
+  plotMultipleQuantileCoherency(plotData)
+  m <- regexpr("^(\\d+)Y", colnames(series)[1])
+  n <- tolower(regmatches(colnames(series)[1], m))
+  ggsaveFullPage(paste0("qcsc_mult_yield_rv_", n, ".png"), landscape=TRUE)
+}
+```
+
+## RV of Betas
 
 ```{r, fig.height=6}
 cSeriesComb <- t(combn(cBetaRV[-1], m=2))
@@ -85,10 +129,53 @@ for(i in 1:nrow(cSeriesComb)){
   seriesNames <- colnames(series)
   plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
   plotQuantileCoherency(plotData)
+  m <- regexpr("^(Beta\\d+)", seriesNames)
+  n <- tolower(regmatches(seriesNames, m))
+  ggsaveFullPage(paste0("qcsc_beta_rv_", paste0(n, collapse="_"), ".png"), landscape=TRUE)
 }
 ```
 
-## RV of Beta Estimates and RV of a Yield of Interest Rate Future
+```{r, fig.height=6}
+allSeries <- cBetaRV[-1]
+for(i in 1:length(allSeries)){
+  series <- as.matrix(termSt[, c(allSeries[i], allSeries[-i]), with=FALSE])
+  plotData <- suppressWarnings(getMultipleQuantileCoherencyPlotData(series, titles=colnames(series)))
+  plotMultipleQuantileCoherency(plotData)
+  m <- regexpr("^(Beta\\d+)", colnames(series)[1])
+  n <- tolower(regmatches(colnames(series)[1], m))
+  ggsaveFullPage(paste0("qcsc_mult_beta_rv_", n, ".png"), landscape=TRUE)
+}
+```
+
+## FD of Betas and FD of Yields
+```{r, fig.height=6}
+cSeriesComb <- as.matrix(expand.grid(cYieldDiff[-1], cBetaDiff[-1]))
+for(i in 1:nrow(cSeriesComb)){
+  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
+  seriesNames <- colnames(series)
+  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
+  plotQuantileCoherency(plotData)
+  m <- regexpr("^(Beta\\d+)", seriesNames)
+  n <- tolower(regmatches(seriesNames, m))
+  m <- regexpr("^(\\d+)Y", seriesNames)
+  n <- c(n, tolower(regmatches(seriesNames, m)))
+  ggsaveFullPage(paste0("qcsc_beta_fd_yield_fd_", paste0(n, collapse="_"), ".png"), landscape=TRUE)
+}
+```
+
+```{r, fig.height=6}
+allSeries <- cBetaDiff[-1]
+for(i in 1:length(allSeries)){
+  series <- as.matrix(termSt[, c(allSeries[i], cYieldDiff[-1]), with=FALSE])
+  plotData <- suppressWarnings(getMultipleQuantileCoherencyPlotData(series, titles=colnames(series)))
+  plotMultipleQuantileCoherency(plotData)
+  m <- regexpr("^(Beta\\d+)", colnames(series)[1])
+  n <- tolower(regmatches(colnames(series)[1], m))
+  ggsaveFullPage(paste0("qcsc_mult_beta_diff_yield_diff_", n, ".png"), landscape=TRUE)
+}
+```
+
+## RV of Betas and RV of Yields
 ```{r, fig.height=6}
 cSeriesComb <- as.matrix(expand.grid(cYieldRV[3], cBetaRV[-1]))
 for(i in 1:nrow(cSeriesComb)){
@@ -97,24 +184,4 @@ for(i in 1:nrow(cSeriesComb)){
   plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
   plotQuantileCoherency(plotData)
 }
-```
-
-## FD of Beta Estimate and RV of Beta Estimates
-```{r, fig.height=6}
-cSeriesComb <- as.matrix(expand.grid(cBetaDiff[3], cBetaRV[-1]))
-for(i in 1:nrow(cSeriesComb)){
-  series <- as.matrix(termSt[, cSeriesComb[i, ], with=FALSE])
-  seriesNames <- colnames(series)
-  plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
-  plotQuantileCoherency(plotData)
-}
-```
-
-## Yield and RV of Yield
-```{r, fig.height=6}
-cSeriesComb <- c(cYieldLobs[3], cYieldRV[3])
-series <- as.matrix(termSt[, cSeriesComb, with=FALSE])
-seriesNames <- colnames(series)
-plotData <- suppressWarnings(getQuantileCoherencyPlotData(series, titles=seriesNames))
-plotQuantileCoherency(plotData)
 ```
